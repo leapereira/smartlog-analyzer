@@ -1,0 +1,23 @@
+# PHP y Apache para ejecutar la aplicación de Laravel
+FROM php:8.5-apache
+
+# Composer y VirtualHost de Apache con document root en public/
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY docker/apache.dev.conf /etc/apache2/sites-available/000-default.conf
+
+# Extensiones PHP para PostgreSQL, Redis y solicitudes HTTP
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    libcurl4-openssl-dev \
+    libicu-dev \
+    libonig-dev \
+    libpq-dev \
+    libzip-dev \
+    unzip \
+    && docker-php-ext-install -j"$(nproc)" curl intl mbstring pdo_pgsql zip \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && a2enmod rewrite \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /var/www/html
