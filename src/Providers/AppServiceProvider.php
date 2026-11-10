@@ -2,10 +2,13 @@
 
 namespace App\Providers;
 
+use App\Analyzers\MockLogAnalyzer;
+use App\Contracts\LogAnalyzer;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\RateLimiter;
+use InvalidArgumentException;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -14,7 +17,14 @@ class AppServiceProvider extends ServiceProvider
    */
   public function register(): void
   {
-    //
+    $this->app->bind(LogAnalyzer::class, function (): LogAnalyzer {
+      return match (config('services.smartlog.llm_driver')) {
+        'mock' => new MockLogAnalyzer(),
+        default => throw new InvalidArgumentException(
+          'El proveedor de análisis configurado no está implementado.',
+        ),
+      };
+    });
   }
 
   /**
