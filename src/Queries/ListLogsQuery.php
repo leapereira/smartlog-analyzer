@@ -6,6 +6,10 @@ use App\Models\Log;
 
 class ListLogsQuery
 {
+  public function __construct(private LogCountsQuery $logCountsQuery)
+  {
+  }
+
   public function execute(array $filters): array
   {
     $query = Log::query();
@@ -26,29 +30,7 @@ class ListLogsQuery
       $query->where('timestamp', '<=', $filters['to']);
     }
 
-    $byService = (clone $query)
-      ->select('service')
-      ->selectRaw('COUNT(*) AS total')
-      ->groupBy('service')
-      ->orderBy('service')
-      ->get()
-      ->map(fn (Log $log) => [
-        'service' => $log->service,
-        'total' => (int) $log->total,
-      ])
-      ->all();
-
-    $byLevel = (clone $query)
-      ->select('level')
-      ->selectRaw('COUNT(*) AS total')
-      ->groupBy('level')
-      ->orderBy('level')
-      ->get()
-      ->map(fn (Log $log) => [
-        'level' => $log->level,
-        'total' => (int) $log->total,
-      ])
-      ->all();
+    $counts = $this->logCountsQuery->execute($query);
 
     $paginator = (clone $query)
       ->orderByDesc('timestamp')
@@ -62,8 +44,8 @@ class ListLogsQuery
 
     return [
       'paginator' => $paginator,
-      'by_service' => $byService,
-      'by_level' => $byLevel,
+      'by_service' => $counts['by_service'],
+      'by_level' => $counts['by_level'],
     ];
   }
 }
