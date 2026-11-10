@@ -16,6 +16,7 @@ return [
 
   'smartlog' => [
     'api_key' => env('SMARTLOG_API_KEY'),
+    'api_rate_limit_per_minute' => env('API_RATE_LIMIT_PER_MINUTE', 60),
   ],
 
   'postmark' => [

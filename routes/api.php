@@ -1,7 +1,7 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Middleware\AuthenticateApiKey;
+use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')
   ->middleware(AuthenticateApiKey::class)
