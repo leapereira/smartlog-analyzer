@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AnalysisStatusEnum;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
@@ -18,6 +19,7 @@ class Analysis extends Model
   protected function casts(): array
   {
     return [
+      'status' => AnalysisStatusEnum::class,
       'result' => 'array',
     ];
   }

@@ -25,6 +25,12 @@ docker compose ps
 
 En el primer inicio, el contenedor instala las dependencias en `vendor/` dentro del proyecto, genera `APP_KEY` si falta y ejecuta las migraciones. Así el IDE también puede reconocer los tipos de Laravel. La API queda disponible en `http://localhost:8000` por defecto.
 
+Para cargar los logs de ejemplo:
+
+```bash
+docker compose exec app php artisan db:seed
+```
+
 ### Comprobar el estado de la API
 
 Las rutas bajo `/api/v1` requieren una clave Bearer. Para comprobar `/health`, reemplaza `tu-clave-configurada` por el valor de `SMARTLOG_API_KEY` definido en `.env`:
