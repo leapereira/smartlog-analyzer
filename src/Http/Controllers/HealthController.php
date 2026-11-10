@@ -31,7 +31,7 @@ class HealthController extends Controller
 
     return response()->json(
       ['status' => $healthy ? 'ok' : 'unavailable'],
-      $healthy ? 200 : 503,
+      $healthy ? JsonResponse::HTTP_OK : JsonResponse::HTTP_SERVICE_UNAVAILABLE,
     );
   }
 }

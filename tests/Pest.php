@@ -20,7 +20,7 @@ pest()->extend(TestCase::class)
   ->in('Feature');
 
 pest()->use(DatabaseTransactions::class)
-  ->in('Feature/Database');
+  ->in('Feature/Database', 'Feature/Logs');
 
 /*
 |--------------------------------------------------------------------------
