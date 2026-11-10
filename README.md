@@ -23,7 +23,17 @@ docker compose up --build -d
 docker compose ps
 ```
 
-En el primer inicio, el contenedor instala las dependencias, genera `APP_KEY` si falta y ejecuta las migraciones. La API queda disponible en `http://localhost:8000` por defecto. Puedes comprobarla en `http://localhost:8000/api/v1/health`.
+En el primer inicio, el contenedor instala las dependencias, genera `APP_KEY` si falta y ejecuta las migraciones. La API queda disponible en `http://localhost:8000` por defecto.
+
+### Comprobar el estado de la API
+
+Las rutas bajo `/api/v1` requieren una clave Bearer. Para comprobar `/health`, reemplaza `tu-clave-configurada` por el valor de `SMARTLOG_API_KEY` definido en `.env`:
+
+```bash
+curl -H "Authorization: Bearer tu-clave-configurada" http://localhost:8000/api/v1/health
+```
+
+La ruta ejecuta `SELECT 1` en PostgreSQL y `PING` en Redis. Devuelve `200 OK` con `{"status":"ok"}` si ambos servicios responden, o `503 Service Unavailable` con `{"status":"unavailable"}` si alguno falla.
 
 ## Puertos, red y variables de entorno
 
@@ -92,9 +102,11 @@ docker compose --env-file .env.production -f docker-compose.prod.yml up -d
 
 Comprueba los servicios y la ruta de salud:
 
+En el siguiente comando, reemplaza `tu-clave-configurada` por el valor de `SMARTLOG_API_KEY` definido en `.env.production`.
+
 ```bash
 docker compose --env-file .env.production -f docker-compose.prod.yml ps
-curl http://localhost:8080/api/v1/health
+curl -H "Authorization: Bearer tu-clave-configurada" http://localhost:8080/api/v1/health
 ```
 
 El puerto publicado de la aplicación es `APP_PORT` (por defecto `8080`). PostgreSQL y Redis solo están expuestos dentro de la red de Compose. Para detener producción sin borrar los datos:
