@@ -17,6 +17,7 @@ services:
       LOG_CHANNEL: ${LOG_CHANNEL:-stderr}
       LOG_LEVEL: ${LOG_LEVEL:-warning}
       SMARTLOG_API_KEY: ${SMARTLOG_API_KEY:?required}
+      API_RATE_LIMIT_PER_MINUTE: ${API_RATE_LIMIT_PER_MINUTE:-60}
       LLM_DRIVER: ${LLM_DRIVER:-openai}
       OPENAI_API_KEY: ${OPENAI_API_KEY:?required}
       DB_CONNECTION: ${DB_CONNECTION:-pgsql}

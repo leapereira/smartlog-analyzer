@@ -17,6 +17,7 @@ services:
       APP_DEBUG: "${APP_DEBUG:-true}"
       APP_URL: "${APP_URL:-http://localhost:${APP_PORT:-8000}}"
       SMARTLOG_API_KEY: ${SMARTLOG_API_KEY:-smartlog-api-key}
+      API_RATE_LIMIT_PER_MINUTE: ${API_RATE_LIMIT_PER_MINUTE:-60}
       LLM_DRIVER: ${LLM_DRIVER:-mock}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       DB_CONNECTION: ${DB_CONNECTION:-pgsql}
