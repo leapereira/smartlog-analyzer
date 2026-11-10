@@ -1,0 +1,66 @@
+name: smartlog-prod
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:80"
+    environment:
+      APP_NAME: "${APP_NAME:-SmartLog Analyzer}"
+      APP_ENV: ${APP_ENV:-production}
+      APP_KEY: ${APP_KEY:?required}
+      APP_DEBUG: "${APP_DEBUG:-false}"
+      APP_URL: ${APP_URL:?required}
+      LOG_CHANNEL: ${LOG_CHANNEL:-stderr}
+      LOG_LEVEL: ${LOG_LEVEL:-warning}
+      SMARTLOG_API_KEY: ${SMARTLOG_API_KEY:?required}
+      LLM_DRIVER: ${LLM_DRIVER:-openai}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?required}
+      DB_CONNECTION: ${DB_CONNECTION:-pgsql}
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_DATABASE: ${DB_DATABASE:?required}
+      DB_USERNAME: ${DB_USERNAME:?required}
+      DB_PASSWORD: ${DB_PASSWORD:?required}
+      CACHE_STORE: ${CACHE_STORE:-redis}
+      REDIS_CLIENT: ${REDIS_CLIENT:-phpredis}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-sync}
+      SESSION_DRIVER: ${SESSION_DRIVER:-file}
+      FILESYSTEM_DISK: ${FILESYSTEM_DISK:-local}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  db:
+    image: postgres:18.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:?required}
+      POSTGRES_USER: ${DB_USERNAME:?required}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?required}
+    volumes:
+      - db_data:/var/lib/postgresql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.4.12-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  db_data:

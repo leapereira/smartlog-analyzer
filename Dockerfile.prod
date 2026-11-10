@@ -1,0 +1,60 @@
+# ============================================================================
+# ETAPA 1: BASE DE PHP, APACHE Y EXTENSIONES
+# ============================================================================
+FROM php:8.5-apache AS php-base
+
+# Configura Apache para servir Laravel desde public/
+COPY docker/apache.prod.conf /etc/apache2/sites-available/000-default.conf
+
+# Extensiones para PostgreSQL y Redis; curl y mbstring ya vienen en la imagen base.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    libpq-dev \
+    libpq5 \
+    && docker-php-ext-install -j"$(nproc)" pdo_pgsql \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && a2enmod rewrite \
+    && mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
+    && apt-get purge -y --auto-remove libpq-dev \
+    && rm -rf /var/lib/apt/lists/* /tmp/pear
+
+# Usa la raíz del proyecto como directorio de trabajo
+WORKDIR /var/www/html
+
+# ============================================================================
+# ETAPA 2: CÓDIGO Y DEPENDENCIAS DE PRODUCCIÓN
+# ============================================================================
+FROM php-base AS build
+
+# Composer solo se necesita durante la construcción de la imagen
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Composer usa unzip para extraer paquetes descargados como ZIP.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copia el proyecto, .dockerignore excluye archivos locales y dependencias
+COPY . .
+
+# package:discover escribe en bootstrap/cache durante composer install.
+RUN mkdir -p bootstrap/cache \
+    && composer install \
+    --no-dev \
+    --no-interaction \
+    --no-progress \
+    --optimize-autoloader \
+    --prefer-dist
+
+# ============================================================================
+# ETAPA 3: IMAGEN FINAL DE PRODUCCIÓN
+# ============================================================================
+FROM php-base AS production
+
+# Copia la aplicación y vendor sin incluir Composer ni su caché
+COPY --from=build /var/www/html /var/www/html
+
+# Permite que Apache escriba logs, cachés, sesiones y vistas de Laravel
+RUN mkdir -p storage/logs storage/framework/cache/data storage/framework/sessions storage/framework/views bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache
