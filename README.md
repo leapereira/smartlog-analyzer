@@ -23,7 +23,13 @@ docker compose up --build -d
 docker compose ps
 ```
 
-En el primer inicio, el contenedor instala las dependencias, genera `APP_KEY` si falta y ejecuta las migraciones. La API queda disponible en `http://localhost:8000` por defecto.
+En el primer inicio, el contenedor instala las dependencias en `vendor/` dentro del proyecto, genera `APP_KEY` si falta y ejecuta las migraciones. Así el IDE también puede reconocer los tipos de Laravel. La API queda disponible en `http://localhost:8000` por defecto.
+
+Para cargar los logs de ejemplo:
+
+```bash
+docker compose exec app php artisan db:seed
+```
 
 ### Comprobar el estado de la API
 
@@ -75,7 +81,7 @@ Para detener el entorno:
 docker compose down
 ```
 
-Esto elimina los contenedores y la red, pero conserva los volúmenes de PostgreSQL y Composer. `docker compose down -v` también elimina esos volúmenes y los datos de desarrollo.
+Esto elimina los contenedores y la red, pero conserva el volumen de PostgreSQL. `vendor/` permanece en el proyecto local y Git lo ignora. `docker compose down -v` también elimina el volumen y los datos de desarrollo.
 
 ## Producción
 
