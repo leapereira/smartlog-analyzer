@@ -44,3 +44,24 @@ it('limita los análisis autenticados y permite consultar el resultado', functio
     ->assertOk()
     ->assertJsonPath('data.id', $response->json('id'));
 });
+
+it('cuenta un análisis reutilizado para el límite de solicitudes', function () {
+  config(['services.smartlog.log_analysis_rate_limit_per_minute' => 2]);
+  $log = Log::create([
+    'service' => 'payments',
+    'level' => 'ERROR',
+    'message' => 'Payment gateway timed out',
+    'timestamp' => '2026-11-10T12:00:00Z',
+  ]);
+  $payload = ['log_ids' => [$log->getKey()]];
+  $this->withHeader('Authorization', 'Bearer test-secret');
+
+  $analysisId = $this->postJson('/api/v1/logs/analyze', $payload)
+    ->assertCreated()->json('id');
+  $this->postJson('/api/v1/logs/analyze', $payload)
+    ->assertOk()
+    ->assertJsonPath('id', $analysisId);
+  $this->postJson('/api/v1/logs/analyze', $payload)
+    ->assertStatus(429)
+    ->assertHeader('Retry-After');
+});

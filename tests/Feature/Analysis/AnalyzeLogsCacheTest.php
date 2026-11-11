@@ -67,6 +67,22 @@ it('genera otro análisis con cache=false y luego reutiliza el nuevo', function 
     ->and($reusedId)->toBe($newId);
 });
 
+it('genera otro análisis cuando vence la referencia en caché', function () use ($createLog) {
+  config(['services.smartlog.analysis_cache_ttl' => 1]);
+  $log = $createLog();
+  $payload = ['log_ids' => [$log->getKey()]];
+
+  $originalId = $this->postJson('/api/v1/logs/analyze', $payload)
+    ->assertCreated()->json('id');
+
+  $this->travel(2)->seconds();
+
+  $newId = $this->postJson('/api/v1/logs/analyze', $payload)
+    ->assertCreated()->json('id');
+
+  expect($newId)->not->toBe($originalId);
+});
+
 it('conserva el análisis anterior si una ejecución forzada falla', function () use ($createLog) {
   $log = $createLog();
   $payload = ['log_ids' => [$log->getKey()]];

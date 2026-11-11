@@ -65,7 +65,7 @@ curl -i -X POST http://localhost:8000/api/v1/logs/analyze \
   -d '{"log_ids":[1,2,3]}'
 ```
 
-La respuesta `201 Created` incluye el ID del análisis, por ejemplo `{"id":42}`. Consúltalo con:
+Un análisis nuevo responde `201 Created` e incluye su ID, por ejemplo `{"id":42}`. Consúltalo con:
 
 ```bash
 curl -H "Authorization: Bearer tu-clave-configurada" \
@@ -79,6 +79,34 @@ La consulta devuelve el estado, el resultado y el error del análisis.
 En ambos casos devuelve `id` y `message`, y el análisis fallido se puede consultar por ese ID.
 
 Las pruebas de la integración simulan las respuestas de OpenAI y no necesitan una clave real.
+
+### Reutilizar análisis con Redis
+
+Si repetís el POST con los mismos IDs, la API reutiliza un análisis completado mientras su referencia esté en Redis. `cache=true` es el valor predeterminado. El orden de los IDs no cambia la selección: `[1,2]` y `[2,1]` usan la misma referencia. Redis guarda solo el ID; el resultado completo permanece en PostgreSQL.
+
+Para pedir un análisis nuevo aunque exista uno anterior, agregá `?cache=false`:
+
+```bash
+curl -i -X POST 'http://localhost:8000/api/v1/logs/analyze?cache=false' \
+  -H "Authorization: Bearer tu-clave-configurada" \
+  -H "Content-Type: application/json" \
+  -d '{"log_ids":[1,2,3]}'
+```
+
+Con los mismos IDs, la secuencia esperada es:
+
+| Pedido | Respuesta |
+| --- | --- |
+| Primer POST sin `cache` | `201 Created`, ID nuevo. |
+| Repetirlo sin `cache` | `200 OK`, mismo ID. |
+| POST con `?cache=false` | `201 Created`, otro ID. |
+| Repetirlo sin `cache` | `200 OK`, el último ID. |
+
+`ANALYSIS_CACHE_TTL` define cuánto dura la referencia en Redis (3600 segundos por defecto). Al vencer, se puede generar otro análisis sin borrar el historial en PostgreSQL. `ANALYSIS_LOCK_SECONDS` define la duración máxima del bloqueo que evita generar simultáneamente el mismo análisis (60 segundos por defecto).
+
+Cada pedido, incluso si reutiliza un resultado, cuenta para los límites de solicitudes.
+
+Si ya se está generando un análisis para esos logs, el POST devuelve `409 Conflict` y se puede reintentar. Si Redis falla antes de generar, devuelve `503 Service Unavailable`. Si falla la publicación de la referencia en Redis después de guardar el análisis en PostgreSQL, devuelve `201 Created` con el ID guardado.
 
 ## Puertos, red y variables de entorno
 
@@ -102,6 +130,7 @@ Los ejemplos de configuración están en [`.env.example`](.env.example) y [`.env
 | `OPENAI_MODEL`, `OPENAI_TIMEOUT`, `OPENAI_CONNECT_TIMEOUT`, `OPENAI_MAX_OUTPUT_TOKENS` | Modelo y límites de tiempo y de salida de OpenAI. |
 | `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` | Conexión y credenciales de PostgreSQL. Dentro de Compose, el host es `db` y el puerto interno es `5432`. |
 | `CACHE_STORE`, `REDIS_CLIENT`, `REDIS_HOST`, `REDIS_PORT` | Caché y conexión con Redis. Dentro de Compose, el host es `redis` y el puerto interno es `6379`. |
+| `ANALYSIS_CACHE_TTL`, `ANALYSIS_LOCK_SECONDS` | Duración en segundos de la referencia reutilizable y del bloqueo del análisis: 3600 y 60 por defecto. |
 | `SESSION_DRIVER`, `FILESYSTEM_DISK`, `QUEUE_CONNECTION` | Almacenamiento de sesiones, archivos y trabajos en cola. |
 
 Para ver los logs de la aplicación:
