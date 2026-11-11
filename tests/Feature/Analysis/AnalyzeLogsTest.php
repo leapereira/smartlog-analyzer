@@ -58,6 +58,46 @@ it('crea un análisis con el mock y guarda los logs seleccionados', function () 
     ->toBe($selectedIds);
 });
 
+it('acepta el parámetro cache omitido, true o false', function (?string $cache) use ($createLog) {
+  $log = $createLog();
+  $url = '/api/v1/logs/analyze' . ($cache === null ? '' : '?cache=' . $cache);
+
+  $this->postJson($url, [
+    'log_ids' => [$log->getKey()],
+  ])->assertCreated();
+})->with([
+  'omitido' => [null],
+  'true' => ['true'],
+  'false' => ['false'],
+]);
+
+it('rechaza valores inválidos de cache sin crear un análisis', function (string $query) use ($createLog) {
+  $log = $createLog();
+  $analysisCount = Analysis::count();
+
+  $this->postJson('/api/v1/logs/analyze?' . $query, [
+    'log_ids' => [$log->getKey()],
+  ])->assertUnprocessable()
+    ->assertJsonValidationErrors('cache');
+
+  expect(Analysis::count())->toBe($analysisCount);
+})->with([
+  'vacío' => ['cache='],
+  'yes' => ['cache=yes'],
+  'cero' => ['cache=0'],
+  'mayúsculas' => ['cache=TRUE'],
+  'array' => ['cache[]=true'],
+]);
+
+it('lee cache de la URL y no del cuerpo', function () use ($createLog) {
+  $log = $createLog();
+
+  $this->postJson('/api/v1/logs/analyze?cache=false', [
+    'log_ids' => [$log->getKey()],
+    'cache' => 'valor inválido',
+  ])->assertCreated();
+});
+
 it('rechaza selecciones inválidas sin crear análisis', function (
   array $payload,
   string $errorField,
