@@ -15,10 +15,10 @@ class ApiDocumentationServiceProvider extends ServiceProvider
     Scramble::configure()
       ->expose(
         ui: fn (Router $router, $action) => $router
-          ->get('api/v1/docs', $action)
+          ->get('docs/api/v1', $action)
           ->name('scramble.docs.ui'),
         document: fn (Router $router, $action) => $router
-          ->get('api/v1/docs.json', $action)
+          ->get('docs/api/v1.json', $action)
           ->name('scramble.docs.document'),
       )
       ->withDocumentTransformers(function (OpenApi $document): void {
