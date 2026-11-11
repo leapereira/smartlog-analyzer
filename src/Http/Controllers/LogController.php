@@ -31,9 +31,12 @@ class LogController extends Controller
     $logs = $result['paginator'];
 
     return response()->json([
+      /** @var list<LogResource> */
       'logs' => LogResource::collection($logs->getCollection())->resolve($request),
       'summary' => [
+        /** @var list<array{service: string, total: int}> */
         'by_service' => $result['by_service'],
+        /** @var list<array{level: string, total: int}> */
         'by_level' => $result['by_level'],
       ],
       'pagination' => [
