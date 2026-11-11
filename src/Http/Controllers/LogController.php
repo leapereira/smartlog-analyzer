@@ -7,10 +7,18 @@ use App\Http\Requests\StoreLogRequest;
 use App\Http\Resources\LogResource;
 use App\Models\Log;
 use App\Queries\ListLogsQuery;
+use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 
+#[Group('Logs')]
 class LogController extends Controller
 {
+  /**
+   * Consultar logs.
+   *
+   * Filtra por servicio, nivel y fechas. Devuelve un listado paginado y los
+   * conteos de todos los logs que coinciden con los filtros.
+   */
   public function index(ListLogsRequest $request, ListLogsQuery $query): JsonResponse
   {
     $result = $query->execute($request->validated());
@@ -31,6 +39,11 @@ class LogController extends Controller
     ]);
   }
 
+  /**
+   * Registrar un log.
+   *
+   * Guarda el servicio, nivel, mensaje y fecha del evento. Devuelve el log creado.
+   */
   public function store(StoreLogRequest $request): JsonResponse
   {
     $log = Log::create($request->validated());

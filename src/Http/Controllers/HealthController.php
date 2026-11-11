@@ -2,13 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 use Throwable;
 
+#[Group('Estado de la API')]
 class HealthController extends Controller
 {
+  /**
+   * Consultar el estado de la API.
+   *
+   * Comprueba si PostgreSQL y Redis responden.
+   */
   public function __invoke(): JsonResponse
   {
     $databaseAvailable = false;
