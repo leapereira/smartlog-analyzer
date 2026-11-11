@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Analyzers\MockLogAnalyzer;
+use App\Analyzers\OpenAILogAnalyzer;
 use App\Contracts\LogAnalyzer;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -19,7 +20,8 @@ class AppServiceProvider extends ServiceProvider
   {
     $this->app->bind(LogAnalyzer::class, function (): LogAnalyzer {
       return match (config('services.smartlog.llm_driver')) {
-        'mock' => new MockLogAnalyzer(),
+        'mock' => $this->app->make(MockLogAnalyzer::class),
+        'openai' => $this->app->make(OpenAILogAnalyzer::class),
         default => throw new InvalidArgumentException(
           'El proveedor de análisis configurado no está implementado.',
         ),

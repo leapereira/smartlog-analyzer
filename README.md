@@ -41,6 +41,45 @@ curl -H "Authorization: Bearer tu-clave-configurada" http://localhost:8000/api/v
 
 La ruta ejecuta `SELECT 1` en PostgreSQL y `PING` en Redis. Devuelve `200 OK` con `{"status":"ok"}` si ambos servicios responden, o `503 Service Unavailable` con `{"status":"unavailable"}` si alguno falla.
 
+### Analizar logs con OpenAI
+
+El entorno usa `LLM_DRIVER=mock` por defecto. Para usar OpenAI, configura estas variables en `.env`:
+
+```dotenv
+LLM_DRIVER=openai
+OPENAI_API_KEY=tu-clave-de-openai
+```
+
+Puedes ajustar `OPENAI_MODEL` (por defecto `gpt-4.1-mini`), `OPENAI_TIMEOUT` (30 segundos), `OPENAI_CONNECT_TIMEOUT` (5 segundos) y `OPENAI_MAX_OUTPUT_TOKENS` (1500). Después de cambiar `.env`, recrea el contenedor para que reciba las variables:
+
+```bash
+docker compose up -d --force-recreate app
+```
+
+Con logs ya cargados, envía sus IDs al endpoint de análisis. Reemplaza `tu-clave-configurada` por `SMARTLOG_API_KEY` y los IDs por los que existan en tu base:
+
+```bash
+curl -i -X POST http://localhost:8000/api/v1/logs/analyze \
+  -H "Authorization: Bearer tu-clave-configurada" \
+  -H "Content-Type: application/json" \
+  -d '{"log_ids":[1,2,3]}'
+```
+
+La respuesta `201 Created` incluye el ID del análisis, por ejemplo `{"id":42}`. Consúltalo con:
+
+```bash
+curl -H "Authorization: Bearer tu-clave-configurada" \
+  http://localhost:8000/api/v1/analysis/42
+```
+
+La consulta devuelve el estado, el resultado y el error del análisis. 
+- Si OpenAI falla o devuelve una respuesta inválida, el POST responde `502 Bad Gateway`. 
+- Si se agota el tiempo de espera, responde `504 Gateway Timeout`.
+
+En ambos casos devuelve `id` y `message`, y el análisis fallido se puede consultar por ese ID.
+
+Las pruebas de la integración simulan las respuestas de OpenAI y no necesitan una clave real.
+
 ## Puertos, red y variables de entorno
 
 | Servicio | Puerto del contenedor | Desarrollo: puerto publicado en el host | Producción |
@@ -59,7 +98,8 @@ Los ejemplos de configuración están en [`.env.example`](.env.example) y [`.env
 | `APP_LOCALE`, `APP_FALLBACK_LOCALE`, `APP_FAKER_LOCALE` | Idioma de la aplicación y de los datos de prueba. |
 | `LOG_CHANNEL`, `LOG_STACK`, `LOG_LEVEL` | Destino y nivel de detalle de los logs. `LOG_STACK` se usa en desarrollo. |
 | `SMARTLOG_API_KEY`, `API_RATE_LIMIT_PER_MINUTE`, `LOG_ANALYSIS_RATE_LIMIT_PER_MINUTE` | Clave de API y límites por IP: 60 solicitudes generales y 10 análisis por minuto por defecto. |
-| `LLM_DRIVER`, `OPENAI_API_KEY` | Proveedor de análisis (`mock` u `openai`). La clave de OpenAI se necesita al usar ese proveedor. El Compose de producción exige que esté configurada. |
+| `LLM_DRIVER`, `OPENAI_API_KEY` | Proveedor de análisis (`mock` u `openai`). La clave de OpenAI se necesita al usar ese proveedor. |
+| `OPENAI_MODEL`, `OPENAI_TIMEOUT`, `OPENAI_CONNECT_TIMEOUT`, `OPENAI_MAX_OUTPUT_TOKENS` | Modelo y límites de tiempo y de salida de OpenAI. |
 | `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` | Conexión y credenciales de PostgreSQL. Dentro de Compose, el host es `db` y el puerto interno es `5432`. |
 | `CACHE_STORE`, `REDIS_CLIENT`, `REDIS_HOST`, `REDIS_PORT` | Caché y conexión con Redis. Dentro de Compose, el host es `redis` y el puerto interno es `6379`. |
 | `SESSION_DRIVER`, `FILESYSTEM_DISK`, `QUEUE_CONNECTION` | Almacenamiento de sesiones, archivos y trabajos en cola. |
@@ -92,7 +132,7 @@ Crea `.env.production` a partir del ejemplo y configura sus valores antes de lev
 [ -f .env.production ] || cp .env.production.example .env.production
 ```
 
-Configura como mínimo `APP_KEY`, `APP_URL`, `SMARTLOG_API_KEY`, `OPENAI_API_KEY`, `DB_DATABASE`, `DB_USERNAME` y `DB_PASSWORD`. Usa la URL pública real en `APP_URL`. Puedes generar un `APP_KEY` ejecutando:
+Configura como mínimo `APP_KEY`, `APP_URL`, `SMARTLOG_API_KEY`, `DB_DATABASE`, `DB_USERNAME` y `DB_PASSWORD`. Si usas `LLM_DRIVER=openai`, configura también `OPENAI_API_KEY`. Usa la URL pública real en `APP_URL`. Puedes generar un `APP_KEY` ejecutando:
 
 ```bash
 docker run --rm php:8.5-cli php -r 'echo "base64:".base64_encode(random_bytes(32)).PHP_EOL;'

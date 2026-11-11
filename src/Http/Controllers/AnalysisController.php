@@ -3,7 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Actions\AnalyzeLogs;
-use App\Enums\AnalysisStatusEnum;
+use App\Exceptions\AnalysisFailedException;
+use App\Exceptions\AnalyzerTimeoutException;
 use App\Http\Requests\AnalyzeLogsRequest;
 use App\Http\Resources\AnalysisResource;
 use App\Models\Analysis;
@@ -13,13 +14,15 @@ class AnalysisController extends Controller
 {
   public function store(AnalyzeLogsRequest $request, AnalyzeLogs $analyzeLogs): JsonResponse
   {
-    $analysis = $analyzeLogs->execute($request->validated('log_ids'));
-
-    if ($analysis->getAttribute('status') === AnalysisStatusEnum::Failed) {
+    try {
+      $analysis = $analyzeLogs->execute($request->validated('log_ids'));
+    } catch (AnalysisFailedException $exception) {
       return response()->json([
-        'id' => $analysis->getKey(),
-        'message' => $analysis->getAttribute('error'),
-      ], JsonResponse::HTTP_BAD_GATEWAY);
+        'id' => $exception->analysis->getKey(),
+        'message' => $exception->getMessage(),
+      ], $exception->getPrevious() instanceof AnalyzerTimeoutException
+        ? JsonResponse::HTTP_GATEWAY_TIMEOUT
+        : JsonResponse::HTTP_BAD_GATEWAY);
     }
 
     return response()->json([
