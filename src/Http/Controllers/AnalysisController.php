@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Actions\AnalyzeLogs;
 use App\Enums\AnalysisStatusEnum;
 use App\Http\Requests\AnalyzeLogsRequest;
+use App\Http\Resources\AnalysisResource;
+use App\Models\Analysis;
 use Illuminate\Http\JsonResponse;
 
 class AnalysisController extends Controller
@@ -23,5 +25,14 @@ class AnalysisController extends Controller
     return response()->json([
       'id' => $analysis->getKey(),
     ], JsonResponse::HTTP_CREATED);
+  }
+
+  public function show(int $id): JsonResponse
+  {
+    $analysis = Analysis::findOrFail($id);
+    $analysisResource = new AnalysisResource($analysis);
+
+    return $analysisResource
+      ->response();
   }
 }

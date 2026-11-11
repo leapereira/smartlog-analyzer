@@ -14,3 +14,10 @@ Route::prefix('logs')
     Route::post('/', [LogController::class, 'store']);
     Route::post('/analyze', [AnalysisController::class, 'store']);
   });
+
+
+Route::prefix('analysis')
+  ->group(function () {
+    Route::get('/{id}', [AnalysisController::class, 'show'])
+      ->whereNumber('id');
+  });
