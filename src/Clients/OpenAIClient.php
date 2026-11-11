@@ -2,6 +2,11 @@
 
 namespace App\Clients;
 
+use App\Exceptions\AnalyzerTimeoutException;
+use GuzzleHttp\Exception\ConnectTimeoutException;
+use GuzzleHttp\Exception\NetworkTimeoutException;
+use GuzzleHttp\Exception\ResponseTimeoutException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use InvalidArgumentException;
 use JsonException;
@@ -28,26 +33,34 @@ class OpenAIClient
       throw new InvalidArgumentException('El modelo de OpenAI no está configurado.');
     }
 
-    $response = Http::withToken($apiKey)
-      ->acceptJson()
-      ->connectTimeout(config('services.openai.connect_timeout'))
-      ->timeout(config('services.openai.timeout'))
-      ->post(self::URL, [
-        'model' => $model,
-        'instructions' => $instructions,
-        'input' => json_encode($input, JSON_THROW_ON_ERROR),
-        'max_output_tokens' => config('services.openai.max_output_tokens'),
-        'store' => false,
-        'text' => [
-          'format' => [
-            'type' => 'json_schema',
-            'name' => $schemaName,
-            'strict' => true,
-            'schema' => $schema,
+    try {
+      $response = Http::withToken($apiKey)
+        ->acceptJson()
+        ->connectTimeout(config('services.openai.connect_timeout'))
+        ->timeout(config('services.openai.timeout'))
+        ->post(self::URL, [
+          'model' => $model,
+          'instructions' => $instructions,
+          'input' => json_encode($input, JSON_THROW_ON_ERROR),
+          'max_output_tokens' => config('services.openai.max_output_tokens'),
+          'store' => false,
+          'text' => [
+            'format' => [
+              'type' => 'json_schema',
+              'name' => $schemaName,
+              'strict' => true,
+              'schema' => $schema,
+            ],
           ],
-        ],
-      ])
-      ->throw();
+        ])
+        ->throw();
+    } catch (ConnectionException $exception) {
+      if ($this->isTimeout($exception)) {
+        throw new AnalyzerTimeoutException('El analizador superó el tiempo de espera.', 0, $exception);
+      }
+
+      throw $exception;
+    }
 
     $body = $response->json();
 
@@ -60,6 +73,21 @@ class OpenAIClient
     }
 
     return $this->extractResult($body['output']);
+  }
+
+  private function isTimeout(ConnectionException $exception): bool
+  {
+    $cause = $exception->getPrevious();
+
+    if ($cause instanceof ConnectTimeoutException
+      || $cause instanceof NetworkTimeoutException
+      || $cause instanceof ResponseTimeoutException) {
+      return true;
+    }
+
+    $message = strtolower($exception->getMessage());
+
+    return str_contains($message, 'curl error 28') || str_contains($message, 'timed out');
   }
 
   private function extractResult(array $output): array

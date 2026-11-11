@@ -1,6 +1,10 @@
 <?php
 
 use App\Analyzers\OpenAILogAnalyzer;
+use App\Exceptions\AnalyzerTimeoutException;
+use GuzzleHttp\Exception\ConnectTimeoutException;
+use GuzzleHttp\Promise\Create;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 
@@ -145,6 +149,35 @@ it('lanza una excepción si OpenAI responde con un error HTTP', function () {
 
   expect(fn() => app(OpenAILogAnalyzer::class)->analyze([], []))
     ->toThrow(RequestException::class);
+});
+
+it('identifica un timeout del cliente HTTP', function () {
+  Http::fake([
+    'https://api.openai.com/v1/responses' => fn($request) => Create::rejectionFor(
+      new ConnectTimeoutException('Se agotó el tiempo de conexión.', $request->toPsrRequest()),
+    ),
+  ]);
+
+  expect(fn() => app(OpenAILogAnalyzer::class)->analyze([], []))
+    ->toThrow(AnalyzerTimeoutException::class, 'El analizador superó el tiempo de espera.');
+});
+
+it('identifica un timeout indicado por cURL', function () {
+  Http::fake([
+    'https://api.openai.com/v1/responses' => Http::failedConnection('cURL error 28: Operation timed out'),
+  ]);
+
+  expect(fn() => app(OpenAILogAnalyzer::class)->analyze([], []))
+    ->toThrow(AnalyzerTimeoutException::class);
+});
+
+it('mantiene los demás fallos de conexión como errores de conexión', function () {
+  Http::fake([
+    'https://api.openai.com/v1/responses' => Http::failedConnection(),
+  ]);
+
+  expect(fn() => app(OpenAILogAnalyzer::class)->analyze([], []))
+    ->toThrow(ConnectionException::class);
 });
 
 it('exige una clave de OpenAI antes de enviar la solicitud', function () {
