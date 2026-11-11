@@ -58,7 +58,8 @@ Los ejemplos de configuración están en [`.env.example`](.env.example) y [`.env
 | `APP_NAME`, `APP_ENV`, `APP_DEBUG`, `APP_KEY`, `APP_URL`, `APP_PORT` | Nombre, entorno, modo de depuración, clave de Laravel, URL y puerto web. `APP_URL` debe coincidir con el puerto publicado. En desarrollo `APP_KEY` se genera al iniciar. En producción se configura antes de levantar los servicios. |
 | `APP_LOCALE`, `APP_FALLBACK_LOCALE`, `APP_FAKER_LOCALE` | Idioma de la aplicación y de los datos de prueba. |
 | `LOG_CHANNEL`, `LOG_STACK`, `LOG_LEVEL` | Destino y nivel de detalle de los logs. `LOG_STACK` se usa en desarrollo. |
-| `SMARTLOG_API_KEY`, `LLM_DRIVER`, `OPENAI_API_KEY` | Clave de API y proveedor de análisis (`mock` u `openai`). La clave de OpenAI se necesita al usar ese proveedor. El Compose de producción exige que esté configurada. |
+| `SMARTLOG_API_KEY`, `API_RATE_LIMIT_PER_MINUTE`, `LOG_ANALYSIS_RATE_LIMIT_PER_MINUTE` | Clave de API y límites por IP: 60 solicitudes generales y 10 análisis por minuto por defecto. |
+| `LLM_DRIVER`, `OPENAI_API_KEY` | Proveedor de análisis (`mock` u `openai`). La clave de OpenAI se necesita al usar ese proveedor. El Compose de producción exige que esté configurada. |
 | `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` | Conexión y credenciales de PostgreSQL. Dentro de Compose, el host es `db` y el puerto interno es `5432`. |
 | `CACHE_STORE`, `REDIS_CLIENT`, `REDIS_HOST`, `REDIS_PORT` | Caché y conexión con Redis. Dentro de Compose, el host es `redis` y el puerto interno es `6379`. |
 | `SESSION_DRIVER`, `FILESYSTEM_DISK`, `QUEUE_CONNECTION` | Almacenamiento de sesiones, archivos y trabajos en cola. |
