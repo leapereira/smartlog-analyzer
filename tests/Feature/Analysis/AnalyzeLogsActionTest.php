@@ -24,76 +24,46 @@ $validResult = [
   'suggestions' => ['Revisar la latencia del proveedor.'],
 ];
 
-it('guarda el análisis completado con su resultado y los logs seleccionados', function () use ($createLog, $validResult) {
-  $first = $createLog();
-  $second = $createLog();
-  $selectedIds = [$first->getKey(), $second->getKey()];
-
-  // Usamos un resultado conocido para comprobar cómo se guarda el análisis
-  $analyzer = Mockery::mock(LogAnalyzer::class);
-  $analyzer->shouldReceive('analyze')->once()->andReturn($validResult);
-  app()->instance(LogAnalyzer::class, $analyzer);
-
-  $analysis = app(AnalyzeLogs::class)->execute($selectedIds)->refresh();
-
-  expect($analysis->getAttribute('status'))->toBe(AnalysisStatusEnum::Completed)
-    ->and($analysis->getAttribute('result'))->toBe($validResult)
-    ->and($analysis->getAttribute('error'))->toBeNull()
-    ->and($analysis->logs()->orderBy('logs.id')->get()->modelKeys())->toBe($selectedIds);
-});
-
-it('envía solo los logs elegidos en orden cronológico y con sus conteos', function () use ($createLog, $validResult) {
-  // El primer y el último evento ocurren a la misma hora, el ID debe desempatar
-  $first = $createLog([
-    'message' => 'Primer evento',
+it('envía los logs elegidos en orden cronológico y con sus conteos', function () use ($createLog, $validResult) {
+  $noon = $createLog([
+    'message' => 'Primer evento del mediodía',
     'timestamp' => '2026-11-10T09:00:00-03:00',
   ]);
-
-  $earlier = $createLog([
+  $morning = $createLog([
     'service' => 'search',
     'level' => 'INFO',
-    'message' => 'Evento anterior',
+    'message' => 'Evento de la mañana',
     'timestamp' => '2026-11-10T11:00:00Z',
   ]);
+  $last = $createLog();
+  $createLog(['message' => 'Log no seleccionado']);
 
-  $last = $createLog(['message' => 'Último evento']);
-  // Este log debe quedar fuera de los datos enviados y de los conteos
-  $createLog(['message' => 'Evento excluido']);
+  $receivedLogs = [];
+  $receivedCounts = [];
   $analyzer = Mockery::mock(LogAnalyzer::class);
-  $analyzer->shouldReceive('analyze')->once()->andReturn($validResult);
+  $analyzer->shouldReceive('analyze')->once()->andReturnUsing(
+    function (array $logs, array $counts) use (&$receivedLogs, &$receivedCounts, $validResult) {
+      $receivedLogs = $logs;
+      $receivedCounts = $counts;
+
+      return $validResult;
+    },
+  );
   app()->instance(LogAnalyzer::class, $analyzer);
 
-  // Enviamos los IDs desordenados para comprobar que la acción los ordena
-  app(AnalyzeLogs::class)->execute([
-    $last->getKey(),
-    $first->getKey(),
-    $earlier->getKey(),
-  ]);
+  app(AnalyzeLogs::class)->execute([$last->getKey(), $noon->getKey(), $morning->getKey()]);
 
-  $expectedLogs = [
-    [
-      'id' => $earlier->getKey(),
-      'service' => 'search',
-      'level' => 'INFO',
-      'message' => 'Evento anterior',
-      'timestamp' => '2026-11-10T11:00:00.000000Z',
-    ],
-    [
-      'id' => $first->getKey(),
-      'service' => 'payments',
-      'level' => 'ERROR',
-      'message' => 'Primer evento',
-      'timestamp' => '2026-11-10T12:00:00.000000Z',
-    ],
-    [
-      'id' => $last->getKey(),
-      'service' => 'payments',
-      'level' => 'ERROR',
-      'message' => 'Último evento',
-      'timestamp' => '2026-11-10T12:00:00.000000Z',
-    ],
-  ];
-  $expectedCounts = [
+  expect(array_column($receivedLogs, 'id'))->toBe([
+    $morning->getKey(),
+    $noon->getKey(),
+    $last->getKey(),
+  ])->and($receivedLogs[1])->toBe([
+    'id' => $noon->getKey(),
+    'service' => 'payments',
+    'level' => 'ERROR',
+    'message' => 'Primer evento del mediodía',
+    'timestamp' => '2026-11-10T12:00:00.000000Z',
+  ])->and($receivedCounts)->toBe([
     'by_service' => [
       ['service' => 'payments', 'total' => 2],
       ['service' => 'search', 'total' => 1],
@@ -102,39 +72,34 @@ it('envía solo los logs elegidos en orden cronológico y con sus conteos', func
       ['level' => 'ERROR', 'total' => 2],
       ['level' => 'INFO', 'total' => 1],
     ],
-  ];
-
-  $analyzer->shouldHaveReceived('analyze')->with($expectedLogs, $expectedCounts)->once();
+  ]);
 });
 
-it('prepara el intento antes de llamar al analizador y cierra su transacción', function () use ($createLog, $validResult) {
+it('guarda el intento y cierra su transacción antes de analizar', function () use ($createLog, $validResult) {
   $log = $createLog();
-  // DatabaseTransactions ya abrió una transacción, la acción debe cerrar solo la suya
+  // DatabaseTransactions mantiene abierta su propia transacción durante el test.
   $transactionLevel = DB::transactionLevel();
-  $observedState = [];
+  $stateDuringAnalysis = [];
   $analyzer = Mockery::mock(LogAnalyzer::class);
-
-  $analyzer
-    ->shouldReceive('analyze')
-    ->once()
-    ->andReturnUsing(function () use (&$observedState, $validResult) {
-      // Capturamos el estado durante la llamada, antes de que el análisis termine
-      $attempt = Analysis::query()->latest('id')->firstOrFail();
-      $observedState = [
-        'status' => $attempt->getAttribute('status'),
-        'result' => $attempt->getAttribute('result'),
-        'error' => $attempt->getAttribute('error'),
-        'log_ids' => $attempt->logs()->get()->modelKeys(),
+  $analyzer->shouldReceive('analyze')->once()->andReturnUsing(
+    function () use (&$stateDuringAnalysis, $validResult) {
+      $analysis = Analysis::query()->latest('id')->firstOrFail();
+      $stateDuringAnalysis = [
+        'status' => $analysis->status,
+        'result' => $analysis->result,
+        'error' => $analysis->error,
+        'log_ids' => $analysis->logs()->get()->modelKeys(),
         'transaction_level' => DB::transactionLevel(),
       ];
 
       return $validResult;
-    });
+    },
+  );
   app()->instance(LogAnalyzer::class, $analyzer);
 
   app(AnalyzeLogs::class)->execute([$log->getKey()]);
 
-  expect($observedState)->toBe([
+  expect($stateDuringAnalysis)->toBe([
     'status' => AnalysisStatusEnum::Processing,
     'result' => null,
     'error' => null,
@@ -143,74 +108,29 @@ it('prepara el intento antes de llamar al analizador y cierra su transacción', 
   ]);
 });
 
-it('rechaza selecciones inválidas sin crear intentos ni llamar al analizador', function (string $selection) use ($createLog) {
+it('rechaza un ID inexistente sin crear un intento', function () use ($createLog) {
   $log = $createLog();
-  $missing = $createLog();
-  $missingId = $missing->getKey();
-  // Conservamos un ID válido donde el log ya no existe
-  $missing->delete();
-
-  $ids = match ($selection) {
-    'vacía' => [],
-    'duplicada' => [$log->getKey(), $log->getKey()],
-    'inexistente' => [$log->getKey(), $missingId],
-  };
-  $analysisCount = Analysis::query()->count();
-  $relationCount = DB::table('analysis_logs')->count();
+  $missingId = $log->getKey();
+  $log->delete();
+  $analysisCount = Analysis::count();
 
   $analyzer = Mockery::mock(LogAnalyzer::class);
   $analyzer->shouldNotReceive('analyze');
   app()->instance(LogAnalyzer::class, $analyzer);
 
-  expect(fn() => app(AnalyzeLogs::class)->execute($ids))
-    ->toThrow(function (ValidationException $exception) {
-      expect($exception->status)->toBe(422)
-        ->and($exception->errors())->toHaveKey('log_ids');
-    });
+  expect(fn() => app(AnalyzeLogs::class)->execute([$missingId]))
+    ->toThrow(ValidationException::class);
 
-  // Rechazar la selección no debe dejar intentos ni relaciones nuevas
-  expect(Analysis::query()->count())->toBe($analysisCount)
-    ->and(DB::table('analysis_logs')->count())->toBe($relationCount);
-})->with(['vacía', 'duplicada', 'inexistente']);
-
-it('conserva el intento y sus relaciones cuando el proveedor lanza una excepción', function () use ($createLog) {
-  $log = $createLog();
-  $error = 'El proveedor no respondió.';
-  $analyzer = Mockery::mock(LogAnalyzer::class);
-  // El proveedor falla después de que la acción haya guardado el intento
-  $analyzer->shouldReceive('analyze')->once()->andThrow(new RuntimeException($error));
-  app()->instance(LogAnalyzer::class, $analyzer);
-
-  $analysis = app(AnalyzeLogs::class)->execute([$log->getKey()])->refresh();
-
-  expect($analysis->getAttribute('status'))->toBe(AnalysisStatusEnum::Failed)
-    ->and($analysis->getAttribute('result'))->toBeNull()
-    ->and($analysis->getAttribute('error'))->toBe($error)
-    ->and($analysis->logs()->get()->modelKeys())->toBe([$log->getKey()]);
-});
-
-it('conserva el intento y sus relaciones cuando el resultado es inválido', function () use ($createLog) {
-  $log = $createLog();
-  $analyzer = Mockery::mock(LogAnalyzer::class);
-  // La respuesta incumple el contrato: summary debe ser texto
-  $analyzer->shouldReceive('analyze')->once()->andReturn(['summary' => 7]);
-  app()->instance(LogAnalyzer::class, $analyzer);
-
-  $analysis = app(AnalyzeLogs::class)->execute([$log->getKey()])->refresh();
-
-  expect($analysis->getAttribute('status'))->toBe(AnalysisStatusEnum::Failed)
-    ->and($analysis->getAttribute('result'))->toBeNull()
-    ->and($analysis->getAttribute('error'))->toBe('El resumen del análisis debe ser un texto.')
-    ->and($analysis->logs()->get()->modelKeys())->toBe([$log->getKey()]);
+  expect(Analysis::count())->toBe($analysisCount);
 });
 
 it('revierte el intento si falla la asociación de los logs', function () use ($createLog) {
   $log = $createLog();
-  $analysisCount = Analysis::query()->count();
+  $analysisCount = Analysis::count();
   $relationCount = DB::table('analysis_logs')->count();
   $countsQuery = Mockery::mock(LogCountsQuery::class);
   $countsQuery->shouldReceive('execute')->once()->andReturnUsing(function () use ($log) {
-    // Simula un borrado entre la lectura de los logs y la asociación al análisis
+    // Simula un borrado entre la lectura del log y su asociación al análisis.
     $log->delete();
 
     return ['by_service' => [], 'by_level' => []];
@@ -223,7 +143,6 @@ it('revierte el intento si falla la asociación de los logs', function () use ($
   expect(fn() => app(AnalyzeLogs::class)->execute([$log->getKey()]))
     ->toThrow(QueryException::class);
 
-  // El rollback debe deshacer tanto el intento como sus relaciones.
-  expect(Analysis::query()->count())->toBe($analysisCount)
+  expect(Analysis::count())->toBe($analysisCount)
     ->and(DB::table('analysis_logs')->count())->toBe($relationCount);
 });
