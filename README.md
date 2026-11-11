@@ -41,6 +41,45 @@ curl -H "Authorization: Bearer tu-clave-configurada" http://localhost:8000/api/v
 
 La ruta ejecuta `SELECT 1` en PostgreSQL y `PING` en Redis. Devuelve `200 OK` con `{"status":"ok"}` si ambos servicios responden, o `503 Service Unavailable` con `{"status":"unavailable"}` si alguno falla.
 
+### Analizar logs con OpenAI
+
+El entorno usa `LLM_DRIVER=mock` por defecto. Para usar OpenAI, configura estas variables en `.env`:
+
+```dotenv
+LLM_DRIVER=openai
+OPENAI_API_KEY=tu-clave-de-openai
+```
+
+Puedes ajustar `OPENAI_MODEL` (por defecto `gpt-4.1-mini`), `OPENAI_TIMEOUT` (30 segundos), `OPENAI_CONNECT_TIMEOUT` (5 segundos) y `OPENAI_MAX_OUTPUT_TOKENS` (1500). Después de cambiar `.env`, recrea el contenedor para que reciba las variables:
+
+```bash
+docker compose up -d --force-recreate app
+```
+
+Con logs ya cargados, envía sus IDs al endpoint de análisis. Reemplaza `tu-clave-configurada` por `SMARTLOG_API_KEY` y los IDs por los que existan en tu base:
+
+```bash
+curl -i -X POST http://localhost:8000/api/v1/logs/analyze \
+  -H "Authorization: Bearer tu-clave-configurada" \
+  -H "Content-Type: application/json" \
+  -d '{"log_ids":[1,2,3]}'
+```
+
+La respuesta `201 Created` incluye el ID del análisis, por ejemplo `{"id":42}`. Consúltalo con:
+
+```bash
+curl -H "Authorization: Bearer tu-clave-configurada" \
+  http://localhost:8000/api/v1/analysis/42
+```
+
+La consulta devuelve el estado, el resultado y el error del análisis. 
+- Si OpenAI falla o devuelve una respuesta inválida, el POST responde `502 Bad Gateway`. 
+- Si se agota el tiempo de espera, responde `504 Gateway Timeout`.
+
+En ambos casos devuelve `id` y `message`, y el análisis fallido se puede consultar por ese ID.
+
+Las pruebas de la integración simulan las respuestas de OpenAI y no necesitan una clave real.
+
 ## Puertos, red y variables de entorno
 
 | Servicio | Puerto del contenedor | Desarrollo: puerto publicado en el host | Producción |
