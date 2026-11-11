@@ -31,6 +31,24 @@ Para cargar los logs de ejemplo:
 docker compose exec app php artisan db:seed
 ```
 
+### Documentación de la API
+
+Scramble genera la documentación desde el código:
+
+- Visor interactivo: [http://localhost:8000/docs/api/v1](http://localhost:8000/docs/api/v1).
+- JSON OpenAPI: [http://localhost:8000/docs/api/v1.json](http://localhost:8000/docs/api/v1.json).
+- Especificación exportada: [docs/api/v1/openapi.json](docs/api/v1/openapi.json).
+
+Las URLs usan el puerto predeterminado `8000`, ajústalo si cambias `APP_PORT`. Para probar las operaciones desde el visor, usa `SMARTLOG_API_KEY` como token Bearer. Puedes usar `LLM_DRIVER=mock` para probar los análisis.
+
+El visor y el JSON están disponibles con `APP_ENV=local`. En otros entornos requieren autorización mediante el gate `viewApiDocs`.
+
+Regenera el archivo exportado cuando cambie el contrato de la API. La URL del servidor exportado usa `APP_URL`:
+
+```bash
+docker compose exec app php artisan scramble:export --path=docs/api/v1/openapi.json
+```
+
 ### Comprobar el estado de la API
 
 Las rutas bajo `/api/v1` requieren una clave Bearer. Para comprobar `/health`, reemplaza `tu-clave-configurada` por el valor de `SMARTLOG_API_KEY` definido en `.env`:

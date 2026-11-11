@@ -5,7 +5,8 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
-  Gate::define('viewApiDocs', fn (?Authenticatable $user = null): bool => true);
+  // Activa la autorización para ver la documentación de la API, sin requerir autenticación
+  Gate::define('viewApiDocs', fn(?Authenticatable $user = null): bool => true);
 
   config(['scramble.cache.store' => null]);
 
@@ -20,7 +21,7 @@ it('muestra el visor de la documentación de la API v1', function () {
 
 it('publica las cinco operaciones de la API v1', function () {
   $document = $this->getJson('/docs/api/v1.json')->assertOk()->json();
-  $operations = array_map(fn (array $path) => array_keys($path), $document['paths']);
+  $operations = array_map(fn(array $path) => array_keys($path), $document['paths']);
 
   expect($operations)->toEqualCanonicalizing([
     '/health' => ['get'],

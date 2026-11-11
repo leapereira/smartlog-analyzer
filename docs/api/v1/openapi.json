@@ -1,0 +1,968 @@
+{
+    "openapi": "3.1.2",
+    "info": {
+        "title": "SmartLog Analyzer API",
+        "version": "1.0.0",
+        "description": "API para registrar logs, consultarlos y analizar selecciones mediante IA."
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8080/api/v1"
+        }
+    ],
+    "tags": [
+        {
+            "name": "Estado de la API"
+        },
+        {
+            "name": "Logs"
+        },
+        {
+            "name": "An\u00e1lisis"
+        }
+    ],
+    "security": [
+        {
+            "http": []
+        }
+    ],
+    "paths": {
+        "/logs/analyze": {
+            "post": {
+                "operationId": "analysis.store",
+                "description": "Recibe los IDs de los logs y puede reutilizar un an\u00e1lisis completado.\nCon cache=false solicita una ejecuci\u00f3n nueva.",
+                "summary": "Analizar los logs seleccionados",
+                "tags": [
+                    "An\u00e1lisis"
+                ],
+                "parameters": [
+                    {
+                        "name": "cache",
+                        "in": "query",
+                        "description": "Permite reutilizar un an\u00e1lisis completado. false solicita una ejecuci\u00f3n nueva.",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "true",
+                                "false"
+                            ],
+                            "default": "true"
+                        },
+                        "example": "false"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AnalyzeLogsRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Se reutiliz\u00f3 un an\u00e1lisis completado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "id"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Otro pedido est\u00e1 generando el mismo an\u00e1lisis.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "La selecci\u00f3n de logs o el par\u00e1metro cache son inv\u00e1lidos.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "201": {
+                        "description": "Se cre\u00f3 un an\u00e1lisis nuevo.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "id"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "La clave de SmartLog falta o es incorrecta.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Se super\u00f3 el l\u00edmite de solicitudes.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "El analizador fall\u00f3 o devolvi\u00f3 una respuesta inv\u00e1lida.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "id",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Redis no est\u00e1 disponible para iniciar la operaci\u00f3n.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "504": {
+                        "description": "Se agot\u00f3 el tiempo de espera del analizador.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "id",
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/analysis/{id}": {
+            "get": {
+                "operationId": "analysis.show",
+                "description": "Devuelve su estado, resultado y error, si lo hubiera.",
+                "summary": "Consultar un an\u00e1lisis",
+                "tags": [
+                    "An\u00e1lisis"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Estado y resultado del an\u00e1lisis.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/AnalysisResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "La clave de SmartLog falta o es incorrecta.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No existe un an\u00e1lisis con ese ID.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Se super\u00f3 el l\u00edmite de solicitudes.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "El servicio de cach\u00e9 no est\u00e1 disponible.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "operationId": "health",
+                "description": "Comprueba si PostgreSQL y Redis responden.",
+                "summary": "Consultar el estado de la API",
+                "tags": [
+                    "Estado de la API"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "PostgreSQL y Redis responden correctamente.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "const": "ok"
+                                        }
+                                    },
+                                    "required": [
+                                        "status"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "La clave de SmartLog falta o es incorrecta.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "PostgreSQL o Redis no est\u00e1n disponibles.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "const": "unavailable"
+                                        }
+                                    },
+                                    "required": [
+                                        "status"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/logs": {
+            "get": {
+                "operationId": "log.index",
+                "description": "Filtra por servicio, nivel y fechas. Devuelve un listado paginado y los\nconteos de todos los logs que coinciden con los filtros.",
+                "summary": "Consultar logs",
+                "tags": [
+                    "Logs"
+                ],
+                "parameters": [
+                    {
+                        "name": "service",
+                        "in": "query",
+                        "description": "Filtra por nombre del servicio.",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "payments"
+                    },
+                    {
+                        "name": "level",
+                        "in": "query",
+                        "description": "Filtra por nivel; se convierte a may\u00fasculas. Ejemplos: INFO, WARN, ERROR.",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "ERROR"
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "description": "Inicio del rango, con segundos y zona horaria.",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        },
+                        "example": "2026-11-11T12:00:00Z"
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "description": "Fin del rango, igual o posterior a from.",
+                        "schema": {
+                            "type": "string",
+                            "format": "date-time"
+                        },
+                        "example": "2026-11-11T13:00:00Z"
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "N\u00famero de p\u00e1gina, desde 1.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 1,
+                            "minimum": 1
+                        },
+                        "example": 1
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Logs por p\u00e1gina, entre 1 y 100.",
+                        "schema": {
+                            "type": "integer",
+                            "default": 20,
+                            "minimum": 1,
+                            "maximum": 100
+                        },
+                        "example": 10
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Listado paginado y conteos de los logs filtrados.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "logs": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/LogResource"
+                                            }
+                                        },
+                                        "summary": {
+                                            "type": "object",
+                                            "properties": {
+                                                "by_service": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "service": {
+                                                                "type": "string"
+                                                            },
+                                                            "total": {
+                                                                "type": "integer"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "service",
+                                                            "total"
+                                                        ]
+                                                    }
+                                                },
+                                                "by_level": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "level": {
+                                                                "type": "string"
+                                                            },
+                                                            "total": {
+                                                                "type": "integer"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "level",
+                                                            "total"
+                                                        ]
+                                                    }
+                                                }
+                                            },
+                                            "required": [
+                                                "by_service",
+                                                "by_level"
+                                            ]
+                                        },
+                                        "pagination": {
+                                            "type": "object",
+                                            "properties": {
+                                                "page": {
+                                                    "type": "integer"
+                                                },
+                                                "per_page": {
+                                                    "type": "integer"
+                                                },
+                                                "total": {
+                                                    "type": "integer"
+                                                },
+                                                "last_page": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "page",
+                                                "per_page",
+                                                "total",
+                                                "last_page"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "logs",
+                                        "summary",
+                                        "pagination"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Los filtros son inv\u00e1lidos.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "La clave de SmartLog falta o es incorrecta.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Se super\u00f3 el l\u00edmite de solicitudes.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "El servicio de cach\u00e9 no est\u00e1 disponible.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "operationId": "log.store",
+                "description": "Guarda el servicio, nivel, mensaje y fecha del evento. Devuelve el log creado.",
+                "summary": "Registrar un log",
+                "tags": [
+                    "Logs"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/StoreLogRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Log creado.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/LogResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Los datos del log son inv\u00e1lidos.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "message",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "La clave de SmartLog falta o es incorrecta.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Se super\u00f3 el l\u00edmite de solicitudes.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "El servicio de cach\u00e9 no est\u00e1 disponible.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "http": {
+                "type": "http",
+                "scheme": "bearer"
+            }
+        },
+        "schemas": {
+            "AnalysisResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "processing",
+                            "completed",
+                            "failed"
+                        ]
+                    },
+                    "result": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "summary": {
+                                "type": "string"
+                            },
+                            "categories": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "suggestions": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "required": [
+                            "summary",
+                            "categories",
+                            "suggestions"
+                        ]
+                    },
+                    "error": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "status",
+                    "result",
+                    "error"
+                ],
+                "title": "AnalysisResource"
+            },
+            "AnalyzeLogsRequest": {
+                "type": "object",
+                "properties": {
+                    "log_ids": {
+                        "type": "array",
+                        "description": "Lista no vac\u00eda de IDs de logs existentes, sin duplicados.",
+                        "examples": [
+                            [
+                                1,
+                                2,
+                                3
+                            ]
+                        ],
+                        "items": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "minItems": 1,
+                        "uniqueItems": true
+                    }
+                },
+                "required": [
+                    "log_ids"
+                ],
+                "title": "AnalyzeLogsRequest"
+            },
+            "LogResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "service": {
+                        "type": "string"
+                    },
+                    "level": {
+                        "type": "string"
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "id",
+                    "service",
+                    "level",
+                    "message",
+                    "timestamp",
+                    "created_at"
+                ],
+                "title": "LogResource"
+            },
+            "StoreLogRequest": {
+                "type": "object",
+                "properties": {
+                    "service": {
+                        "type": "string",
+                        "description": "Servicio que produjo el log.",
+                        "examples": [
+                            "payments"
+                        ]
+                    },
+                    "level": {
+                        "type": "string",
+                        "description": "Nivel del log; se convierte a may\u00fasculas. Ejemplos: INFO, WARN, ERROR.",
+                        "examples": [
+                            "ERROR"
+                        ]
+                    },
+                    "message": {
+                        "type": "string",
+                        "description": "Mensaje del evento.",
+                        "examples": [
+                            "Se agot\u00f3 el tiempo de espera de pagos."
+                        ]
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time",
+                        "description": "Fecha del evento con segundos y zona horaria.",
+                        "examples": [
+                            "2026-11-11T12:00:00Z"
+                        ]
+                    }
+                },
+                "required": [
+                    "service",
+                    "level",
+                    "message",
+                    "timestamp"
+                ],
+                "title": "StoreLogRequest"
+            }
+        }
+    }
+}
