@@ -5,6 +5,8 @@ namespace App\Actions;
 use App\Analyzers\AnalysisResult;
 use App\Contracts\LogAnalyzer;
 use App\Enums\AnalysisStatusEnum;
+use App\Exceptions\AnalysisFailedException;
+use App\Exceptions\AnalyzerTimeoutException;
 use App\Models\Analysis;
 use App\Models\Log;
 use App\Queries\LogCountsQuery;
@@ -56,13 +58,22 @@ class AnalyzeLogs
         $this->logAnalyzer->analyze($logsData, $counts),
       );
     } catch (Throwable $exception) {
+      $message = $exception instanceof AnalyzerTimeoutException
+        ? 'El analizador superó el tiempo de espera.'
+        : 'No se pudo completar el análisis.';
+
       $analysis->update([
         'status' => AnalysisStatusEnum::Failed,
         'result' => null,
-        'error' => $exception->getMessage(),
+        'error' => $message,
       ]);
 
-      return $analysis;
+      logger()->error('Falló el análisis de logs.', [
+        'analysis_id' => $analysis->getKey(),
+        'exception' => $exception,
+      ]);
+
+      throw new AnalysisFailedException($analysis, $message, $exception);
     }
 
     $analysis->update([

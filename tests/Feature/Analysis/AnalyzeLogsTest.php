@@ -3,9 +3,14 @@
 
 use App\Contracts\LogAnalyzer;
 use App\Enums\AnalysisStatusEnum;
+use App\Exceptions\AnalyzerTimeoutException;
 use App\Models\Analysis;
 use App\Models\Log;
+use App\Providers\AppServiceProvider;
+use Illuminate\Cache\RateLimiter as CacheRateLimiter;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 
 $createLog = fn(array $attributes = []) => Log::create([
   'service' => 'payments',
@@ -20,6 +25,9 @@ beforeEach(function () {
     'services.smartlog.api_key' => 'test-secret',
     'services.smartlog.llm_driver' => 'mock',
   ]);
+
+  RateLimiter::swap(new CacheRateLimiter(Cache::store('array')));
+  (new AppServiceProvider(app()))->boot();
 
   $this->withHeader('Authorization', 'Bearer test-secret');
 });
@@ -107,27 +115,52 @@ it('rechaza IDs inexistentes sin crear un análisis', function () use ($createLo
 
 it('registra el análisis como fallido cuando el proveedor lanza una excepción', function () use ($createLog) {
   $log = $createLog();
-  $error = 'El proveedor no respondió.';
 
   $analyzer = Mockery::mock(LogAnalyzer::class);
   $analyzer->shouldReceive('analyze')
     ->once()
-    ->andThrow(new RuntimeException($error));
+    ->andThrow(new RuntimeException('Detalle técnico del proveedor.'));
 
   app()->instance(LogAnalyzer::class, $analyzer);
 
   $response = $this->postJson('/api/v1/logs/analyze', [
     'log_ids' => [$log->getKey()],
   ])->assertStatus(502)
-    ->assertJsonStructure(['id', 'message']);
+    ->assertJsonPath('message', 'No se pudo completar el análisis.');
 
   $analysis = Analysis::findOrFail($response->json('id'));
 
   expect($analysis->status)->toBe(AnalysisStatusEnum::Failed)
     ->and($analysis->result)->toBeNull()
-    ->and($analysis->error)->toBe($error)
+    ->and($analysis->error)->toBe('No se pudo completar el análisis.')
     ->and($analysis->logs()->get()->modelKeys())
     ->toBe([$log->getKey()]);
+});
+
+it('devuelve 504 y permite consultar el análisis cuando se agota el tiempo', function () use ($createLog) {
+  $log = $createLog();
+  $analyzer = Mockery::mock(LogAnalyzer::class);
+  $analyzer->shouldReceive('analyze')
+    ->once()
+    ->andThrow(new AnalyzerTimeoutException('Tiempo agotado.'));
+  app()->instance(LogAnalyzer::class, $analyzer);
+
+  $response = $this->postJson('/api/v1/logs/analyze', [
+    'log_ids' => [$log->getKey()],
+  ])->assertStatus(504)
+    ->assertJsonPath('message', 'El analizador superó el tiempo de espera.');
+
+  $analysis = Analysis::findOrFail($response->json('id'));
+
+  expect($analysis->status)->toBe(AnalysisStatusEnum::Failed)
+    ->and($analysis->result)->toBeNull()
+    ->and($analysis->error)->toBe('El analizador superó el tiempo de espera.')
+    ->and($analysis->logs()->get()->modelKeys())->toBe([$log->getKey()]);
+
+  $this->getJson('/api/v1/analysis/' . $analysis->getKey())
+    ->assertOk()
+    ->assertJsonPath('data.status', 'failed')
+    ->assertJsonPath('data.error', 'El analizador superó el tiempo de espera.');
 });
 
 it('registra el análisis como fallido cuando el resultado es inválido', function () use ($createLog) {
@@ -143,13 +176,13 @@ it('registra el análisis como fallido cuando el resultado es inválido', functi
   $response = $this->postJson('/api/v1/logs/analyze', [
     'log_ids' => [$log->getKey()],
   ])->assertStatus(502)
-    ->assertJsonStructure(['id', 'message']);
+    ->assertJsonPath('message', 'No se pudo completar el análisis.');
 
   $analysis = Analysis::findOrFail($response->json('id'));
 
   expect($analysis->status)->toBe(AnalysisStatusEnum::Failed)
     ->and($analysis->result)->toBeNull()
-    ->and($analysis->error)->toBeString()
+    ->and($analysis->error)->toBe('No se pudo completar el análisis.')
     ->and($analysis->logs()->get()->modelKeys())
     ->toBe([$log->getKey()]);
 });
