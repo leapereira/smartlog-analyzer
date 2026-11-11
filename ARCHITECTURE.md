@@ -55,7 +55,7 @@ Si pedís analizar los mismos logs, la API puede usar un análisis que ya termin
 | `cache=true` o sin el parámetro, y no hay un análisis disponible | Genera uno nuevo y devuelve `201 Created` con su ID. |
 | `POST /api/v1/logs/analyze?cache=false` | Pide generar un análisis nuevo aunque exista uno anterior. Si termina bien, devuelve `201 Created` y actualiza Redis con el nuevo ID. |
 
-Para reconocer un pedido repetido, la API compara los **IDs de los logs** y la **configuración del analizador**. El orden y los IDs repetidos dan lo mismo. Por ejemplo, `[5, 12]` y `[12, 5, 5]` representan la misma selección.
+Para reconocer un pedido repetido, la API compara los **IDs de los logs** y la **configuración del analizador**. El orden no cambia la selección, los IDs repetidos se rechazan. Por ejemplo, `[5, 12]` y `[12, 5]` representan la misma selección.
 
 Si dos pedidos necesitan generar el mismo análisis al mismo tiempo, Redis usa un bloqueo temporal para que solo uno lo genere. Al tomar el bloqueo, la API vuelve a buscar en la caché si el pedido permite reutilizar un resultado. Si otro pedido ya está generando ese análisis, la API devuelve `409 Conflict` y el cliente puede reintentar.
 
