@@ -19,6 +19,8 @@ return [
     'api_rate_limit_per_minute' => env('API_RATE_LIMIT_PER_MINUTE', 60),
     'log_analysis_rate_limit_per_minute' => env('LOG_ANALYSIS_RATE_LIMIT_PER_MINUTE', 10),
     'llm_driver' => env('LLM_DRIVER', 'mock'),
+    'analysis_cache_ttl' => (int) env('ANALYSIS_CACHE_TTL', 3600),
+    'analysis_lock_seconds' => (int) env('ANALYSIS_LOCK_SECONDS', 60),
   ],
 
   'openai' => [
