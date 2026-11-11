@@ -53,7 +53,7 @@ return [
         'version' => '1.0.0',
 
         /*
-         * Description rendered on the home page of the API documentation (`/api/v1/docs`).
+         * Description rendered on the home page of the API documentation (`/docs/api/v1`).
          */
         'description' => 'API para registrar logs, consultarlos y analizar selecciones mediante IA.',
     ],

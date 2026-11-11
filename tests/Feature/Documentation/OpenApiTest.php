@@ -12,14 +12,14 @@ beforeEach(function () {
   Http::preventStrayRequests();
 });
 
-it('muestra el visor de la documentación en la API v1', function () {
-  $this->get('/api/v1/docs')
+it('muestra el visor de la documentación de la API v1', function () {
+  $this->get('/docs/api/v1')
     ->assertOk()
     ->assertSee('SmartLog Analyzer API');
 });
 
 it('publica las cinco operaciones de la API v1', function () {
-  $document = $this->getJson('/api/v1/docs.json')->assertOk()->json();
+  $document = $this->getJson('/docs/api/v1.json')->assertOk()->json();
   $operations = array_map(fn (array $path) => array_keys($path), $document['paths']);
 
   expect($operations)->toEqualCanonicalizing([
@@ -31,7 +31,7 @@ it('publica las cinco operaciones de la API v1', function () {
 });
 
 it('declara la autenticación Bearer para toda la API', function () {
-  $document = $this->getJson('/api/v1/docs.json')->assertOk()->json();
+  $document = $this->getJson('/docs/api/v1.json')->assertOk()->json();
 
   expect($document['components']['securitySchemes']['http'])->toBe([
     'type' => 'http',
@@ -40,7 +40,7 @@ it('declara la autenticación Bearer para toda la API', function () {
 });
 
 it('documenta cache como parámetro opcional de la URL y log_ids en el cuerpo', function () {
-  $document = $this->getJson('/api/v1/docs.json')->assertOk()->json();
+  $document = $this->getJson('/docs/api/v1.json')->assertOk()->json();
   $operation = $document['paths']['/logs/analyze']['post'];
   $cache = collect($operation['parameters'])->firstWhere('name', 'cache');
   $body = $document['components']['schemas']['AnalyzeLogsRequest'];
@@ -58,7 +58,7 @@ it('documenta los códigos de respuesta de la operación', function (
   string $method,
   array $expectedStatuses,
 ) {
-  $document = $this->getJson('/api/v1/docs.json')->assertOk()->json();
+  $document = $this->getJson('/docs/api/v1.json')->assertOk()->json();
   $responses = $document['paths'][$path][$method]['responses'];
 
   expect(array_keys($responses))->toEqualCanonicalizing($expectedStatuses);
