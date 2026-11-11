@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -19,6 +20,16 @@ return Application::configure(basePath: dirname(__DIR__))
     $exceptions->shouldRenderJsonWhen(
       fn(Request $request) => $request->is('api/*') || $request->expectsJson(),
     );
+
+    $exceptions->render(function (RedisException $exception, Request $request): ?JsonResponse {
+      if (!$request->is('api/*')) {
+        return null;
+      }
+
+      return response()->json([
+        'message' => 'El servicio de caché no está disponible.',
+      ], JsonResponse::HTTP_SERVICE_UNAVAILABLE);
+    });
   })->create()
   ->useAppPath(dirname(__DIR__) . '/src')
   ->useDatabasePath(dirname(__DIR__) . '/db');
