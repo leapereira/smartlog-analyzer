@@ -2,8 +2,13 @@
 
 namespace App\Http\Requests;
 
+use Dedoc\Scramble\Attributes\BodyParameter;
 use Illuminate\Foundation\Http\FormRequest;
 
+#[BodyParameter('service', description: 'Servicio que produjo el log.', example: 'payments')]
+#[BodyParameter('level', description: 'Nivel del log; se convierte a mayúsculas. Ejemplos: INFO, WARN, ERROR.', example: 'ERROR')]
+#[BodyParameter('message', description: 'Mensaje del evento.', example: 'Se agotó el tiempo de espera de pagos.')]
+#[BodyParameter('timestamp', description: 'Fecha del evento con segundos y zona horaria.', format: 'date-time', example: '2026-11-11T12:00:00Z')]
 class StoreLogRequest extends FormRequest
 {
   public function authorize(): bool

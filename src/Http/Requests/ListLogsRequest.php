@@ -3,9 +3,16 @@
 namespace App\Http\Requests;
 
 use DateTimeImmutable;
+use Dedoc\Scramble\Attributes\QueryParameter;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
+#[QueryParameter('service', description: 'Filtra por nombre del servicio.', example: 'payments')]
+#[QueryParameter('level', description: 'Filtra por nivel; se convierte a mayúsculas. Ejemplos: INFO, WARN, ERROR.', example: 'ERROR')]
+#[QueryParameter('from', description: 'Inicio del rango, con segundos y zona horaria.', format: 'date-time', example: '2026-11-11T12:00:00Z')]
+#[QueryParameter('to', description: 'Fin del rango, igual o posterior a from.', format: 'date-time', example: '2026-11-11T13:00:00Z')]
+#[QueryParameter('page', description: 'Número de página, desde 1.', default: 1, example: 1)]
+#[QueryParameter('per_page', description: 'Logs por página, entre 1 y 100.', default: 20, example: 10)]
 class ListLogsRequest extends FormRequest
 {
   public function authorize(): bool

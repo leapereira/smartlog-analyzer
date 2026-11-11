@@ -12,6 +12,13 @@ class AnalysisResource extends JsonResource
     return [
       'id' => $this->id,
       'status' => $this->status->value,
+      /**
+       * @var array{
+       *   summary: string,
+       *   categories: list<string>,
+       *   suggestions: list<string>
+       * }|null
+       */
       'result' => $this->result,
       'error' => $this->error,
     ];
