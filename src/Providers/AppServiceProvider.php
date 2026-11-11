@@ -37,5 +37,11 @@ class AppServiceProvider extends ServiceProvider
         (int) config('services.smartlog.api_rate_limit_per_minute', 60),
       )->by($request->ip());
     });
+
+    RateLimiter::for('log-analysis', function (Request $request) {
+      return Limit::perMinute(
+        (int) config('services.smartlog.log_analysis_rate_limit_per_minute', 10),
+      )->by($request->ip());
+    });
   }
 }
