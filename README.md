@@ -191,6 +191,10 @@ docker compose down
 
 Esto elimina los contenedores y la red, pero conserva el volumen de PostgreSQL. `vendor/` permanece en el proyecto local y Git lo ignora. `docker compose down -v` también elimina el volumen y los datos de desarrollo.
 
+## Integración continua
+
+El workflow [Tests](.github/workflows/tests.yml) ejecuta `docker compose run --build --rm -T app php artisan test` automáticamente en cada pull request dirigido a `main`. Reutiliza [docker-compose.yml](docker-compose.yml) y [Dockerfile.dev](Dockerfile.dev) para construir la aplicación y levantar PostgreSQL y Redis. El entrypoint instala las dependencias, genera `APP_KEY` y ejecuta las migraciones en una base de pruebas antes de iniciar la suite.
+
 ## Producción
 
 ### Configurar el entorno
@@ -254,5 +258,4 @@ Las decisiones técnicas y sus alternativas están explicadas en [ARCHITECTURE.m
 ## Mejoras pendientes
 
 - **Procesamiento con colas y Horizon:** usaría Laravel Queues con Redis para ejecutar los análisis en segundo plano. Horizon permitiría administrar los workers y consultar tiempos de ejecución y fallos. Al aceptar un análisis nuevo, la API respondería `202 Accepted` con su ID. El cliente consultaría su estado y resultado mediante `GET /api/v1/analysis/{id}`.
-- **Integración continua:** agregaría un workflow de GitHub Actions que ejecute las pruebas automáticamente en cada pull request, usando PostgreSQL y Redis como servicios. Esto permitiría detectar fallos antes de integrar los cambios a `main`.
 - **Carga de varios logs:** ampliaría `POST /api/v1/logs` para recibir una lista con uno o varios logs. Validaría todos antes de guardarlos y usaría una transacción para evitar cargas incompletas. La respuesta incluiría los logs creados con sus IDs y habría un máximo configurable de logs por solicitud.
