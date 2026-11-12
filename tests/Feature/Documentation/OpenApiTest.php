@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
   // Activa la autorización para ver la documentación de la API, sin requerir autenticación
+  Gate::swap(Gate::forUser(null));
   Gate::define('viewApiDocs', fn(?Authenticatable $user = null): bool => true);
 
   config(['scramble.cache.store' => null]);

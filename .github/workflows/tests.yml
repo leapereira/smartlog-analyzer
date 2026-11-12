@@ -1,0 +1,29 @@
+name: Tests
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      COMPOSE_PROJECT_NAME: smartlog-ci
+      APP_ENV: testing
+      DB_DATABASE: smartlog_test
+      LLM_DRIVER: mock
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Prepare environment
+        run: cp .env.example .env
+
+      - name: Run tests
+        run: docker compose run --build --rm -T app php artisan test

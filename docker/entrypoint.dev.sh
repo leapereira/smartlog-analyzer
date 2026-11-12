@@ -12,4 +12,4 @@ if ! grep -q '^APP_KEY=.' .env; then
 fi
 
 php artisan migrate --path=db/migrations --force
-exec apache2-foreground
+exec "$@"
