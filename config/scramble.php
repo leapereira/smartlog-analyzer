@@ -1,6 +1,6 @@
 <?php
 
-use Dedoc\Scramble\Http\Middleware\RestrictedDocsAccess;
+use App\Http\Middleware\EnsureLocalEnvironment;
 
 return [
     /*
@@ -158,7 +158,7 @@ return [
 
     'middleware' => [
         'web',
-        RestrictedDocsAccess::class,
+        EnsureLocalEnvironment::class,
     ],
 
     'extensions' => [],

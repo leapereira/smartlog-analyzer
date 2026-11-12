@@ -1,13 +1,9 @@
 <?php
 
-use Illuminate\Contracts\Auth\Authenticatable;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
-  // Activa la autorización para ver la documentación de la API, sin requerir autenticación
-  Gate::swap(Gate::forUser(null));
-  Gate::define('viewApiDocs', fn(?Authenticatable $user = null): bool => true);
+  $this->app->instance('env', 'local');
 
   config(['scramble.cache.store' => null]);
 
@@ -19,6 +15,16 @@ it('muestra el visor de la documentación de la API v1', function () {
     ->assertOk()
     ->assertSee('SmartLog Analyzer API');
 });
+
+it('restringe la documentación en producción incluso con una clave de API válida', function (string $path) {
+  $this->app->instance('env', 'production');
+  config(['services.smartlog.api_key' => 'test-secret']);
+
+  $this->get($path)->assertForbidden();
+
+  $this->withHeader('Authorization', 'Bearer test-secret')
+    ->get($path)->assertForbidden();
+})->with(['/docs/api/v1', '/docs/api/v1.json']);
 
 it('publica las cinco operaciones de la API v1', function () {
   $document = $this->getJson('/docs/api/v1.json')->assertOk()->json();

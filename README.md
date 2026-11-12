@@ -49,7 +49,7 @@ Scramble genera la documentación desde el código:
 
 Las URLs usan el puerto predeterminado `8000`, ajústalo si cambias `APP_PORT`. Para probar las operaciones desde el visor, usa `SMARTLOG_API_KEY` como token Bearer. Puedes usar `LLM_DRIVER=mock` para probar los análisis.
 
-El visor y el JSON están disponibles con `APP_ENV=local`. En otros entornos requieren autorización mediante el gate `viewApiDocs`.
+El visor y el JSON solo están disponibles con `APP_ENV=local`. En otros entornos devuelven `403 Forbidden`.
 
 Regenera el archivo exportado cuando cambie el contrato de la API. La URL del servidor exportado usa `APP_URL`:
 
@@ -261,3 +261,4 @@ Las decisiones técnicas y sus alternativas están explicadas en [ARCHITECTURE.m
 
 - **Procesamiento con colas y Horizon:** usaría Laravel Queues con Redis para ejecutar los análisis en segundo plano. Horizon permitiría administrar los workers y consultar tiempos de ejecución y fallos. Al aceptar un análisis nuevo, la API respondería `202 Accepted` con su ID. El cliente consultaría su estado y resultado mediante `GET /api/v1/analysis/{id}`.
 - **Carga de varios logs:** ampliaría `POST /api/v1/logs` para recibir una lista con uno o varios logs. Validaría todos antes de guardarlos y usaría una transacción para evitar cargas incompletas. La respuesta incluiría los logs creados con sus IDs y habría un máximo configurable de logs por solicitud.
+- **Observabilidad:** usaría **Monolog** para generar logs en JSON con un identificador por solicitud y **Loki** para almacenarlos. Expondría métricas para **Prometheus** sobre tiempos de respuesta, errores, duración de los análisis y aciertos de caché. Instrumentaría la API con **OpenTelemetry para PHP** y guardaría las trazas en **Tempo**. **Grafana Alloy** recolectaría los logs y las trazas, mientras que **Grafana** permitiría consultarlos junto con las métricas, crear paneles y configurar alertas. Incorporaría estos componentes como servicios opcionales de Docker Compose.
