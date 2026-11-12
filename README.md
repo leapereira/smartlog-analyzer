@@ -253,6 +253,8 @@ Con ChatGPT discutí la arquitectura a partir de mis ideas, comparé alternativa
 
 Con Codex generé parte del código y las pruebas. Revisé cada modificación y adapté las propuestas cuando no coincidían con la arquitectura definida o agregaban complejidad innecesaria.
 
+Una propuesta que modifiqué fue guardar en PostgreSQL los contadores de los límites de solicitudes. Elegí Redis, que ya formaba parte del proyecto para la caché, para gestionar también esos contadores.
+
 Las decisiones técnicas y sus alternativas están explicadas en [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Mejoras pendientes

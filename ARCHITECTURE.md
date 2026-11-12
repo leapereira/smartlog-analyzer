@@ -21,7 +21,7 @@ SmartLog Analyzer es una API que recibe logs de varios microservicios. Permite f
 
 ### Autenticación con clave de API
 
-Las rutas de logs, análisis y `/health` piden una clave compartida. El servidor recibe una clave larga y aleatoria mediante `SMARTLOG_API_KEY`. En `.env.example` se declara `SMARTLOG_API_KEY=`.
+Las rutas de logs, análisis y `/health` piden una clave compartida, configurada mediante `SMARTLOG_API_KEY`. En `.env.example` se declara `SMARTLOG_API_KEY=smartlog-api-key` como valor de desarrollo. En producción se debe configurar una clave larga y aleatoria.
 
 Los microservicios y el cliente REST envían la clave en el encabezado `Authorization`.
 
