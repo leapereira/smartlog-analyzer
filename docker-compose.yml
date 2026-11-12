@@ -41,6 +41,11 @@ services:
       REDIS_PORT: 6379
       QUEUE_CONNECTION: ${QUEUE_CONNECTION:-sync}
       SESSION_DRIVER: ${SESSION_DRIVER:-file}
+    healthcheck:
+      test: [ "CMD", "curl", "--fail", "--silent", "--show-error", "--output", "/dev/null", "http://127.0.0.1/up" ]
+      interval: 5s
+      timeout: 3s
+      retries: 60
     depends_on:
       db:
         condition: service_healthy

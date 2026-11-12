@@ -23,11 +23,11 @@ En `.env` puedes ajustar los puertos (`APP_PORT`, `DB_PORT`, `REDIS_PORT`) y ele
 Construye y levanta la aplicación, PostgreSQL y Redis:
 
 ```bash
-docker compose up --build -d
+docker compose up --build --wait
 docker compose ps
 ```
 
-En el primer inicio, el contenedor instala las dependencias en `vendor/` dentro del proyecto, genera `APP_KEY` si falta y ejecuta las migraciones. Así el IDE también puede reconocer los tipos de Laravel. La API queda disponible en `http://localhost:8000` por defecto.
+En el primer inicio, el contenedor instala las dependencias en `vendor/` dentro del proyecto, genera `APP_KEY` si falta y ejecuta las migraciones. El comando espera a que Laravel responda en `/up` antes de devolver el control y deja los contenedores en segundo plano. Así el IDE también puede reconocer los tipos de Laravel. La API queda disponible en `http://localhost:8000` por defecto.
 
 ### Cargar datos de ejemplo
 
