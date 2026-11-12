@@ -1,12 +1,14 @@
 # SmartLog Analyzer
 
-API para recibir logs de microservicios y solicitar su análisis. La arquitectura y las decisiones técnicas están documentadas en [ARCHITECTURE.md](ARCHITECTURE.md).
+API para recibir logs de microservicios y solicitar su análisis.
 
 ## Requisitos
 
 - Docker.
 
 ## Desarrollo
+
+### Preparar el entorno
 
 Desde la raíz del proyecto, crea el archivo de entorno si todavía no existe:
 
@@ -15,6 +17,8 @@ Desde la raíz del proyecto, crea el archivo de entorno si todavía no existe:
 ```
 
 En `.env` puedes ajustar los puertos (`APP_PORT`, `DB_PORT`, `REDIS_PORT`) y elegir `LLM_DRIVER=mock` para trabajar sin una clave de OpenAI, o `LLM_DRIVER=openai` y configurar `OPENAI_API_KEY`.
+
+### Iniciar los servicios
 
 Construye y levanta la aplicación, PostgreSQL y Redis:
 
@@ -25,11 +29,15 @@ docker compose ps
 
 En el primer inicio, el contenedor instala las dependencias en `vendor/` dentro del proyecto, genera `APP_KEY` si falta y ejecuta las migraciones. Así el IDE también puede reconocer los tipos de Laravel. La API queda disponible en `http://localhost:8000` por defecto.
 
+### Cargar datos de ejemplo
+
 Para cargar los logs de ejemplo:
 
 ```bash
 docker compose exec app php artisan db:seed
 ```
+
+## Uso de la API
 
 ### Documentación de la API
 
@@ -126,7 +134,9 @@ Cada pedido, incluso si reutiliza un resultado, cuenta para los límites de soli
 
 Si ya se está generando un análisis para esos logs, el POST devuelve `409 Conflict` y se puede reintentar. Si Redis falla antes de generar, devuelve `503 Service Unavailable`. Si falla la publicación de la referencia en Redis después de guardar el análisis en PostgreSQL, devuelve `201 Created` con el ID guardado.
 
-## Puertos, red y variables de entorno
+## Configuración
+
+### Puertos y red
 
 | Servicio | Puerto del contenedor | Desarrollo: puerto publicado en el host | Producción |
 | --- | ---: | ---: | --- |
@@ -135,6 +145,8 @@ Si ya se está generando un análisis para esos logs, el POST devuelve `409 Conf
 | Redis | `6379` | `REDIS_PORT` (por defecto `6379`) → `6379` | Solo red interna, `6379` |
 
 Compose crea una red privada para cada entorno: `smartlog-dev_default` y `smartlog-prod_default`. Los contenedores se encuentran por el nombre del servicio. La aplicación se conecta a PostgreSQL en `db:5432` y a Redis en `redis:6379`. En desarrollo, `DB_PORT` y `REDIS_PORT` cambian el puerto publicado en el host. No cambian los puertos internos. En producción, PostgreSQL y Redis no publican puertos al host.
+
+### Variables de entorno
 
 Los ejemplos de configuración están en [`.env.example`](.env.example) y [`.env.production.example`](.env.production.example). Sus variables se agrupan así:
 
@@ -151,17 +163,25 @@ Los ejemplos de configuración están en [`.env.example`](.env.example) y [`.env
 | `ANALYSIS_CACHE_TTL`, `ANALYSIS_LOCK_SECONDS` | Duración en segundos de la referencia reutilizable y del bloqueo del análisis: 3600 y 60 por defecto. |
 | `SESSION_DRIVER`, `FILESYSTEM_DISK`, `QUEUE_CONNECTION` | Almacenamiento de sesiones, archivos y trabajos en cola. |
 
+## Comandos de desarrollo
+
+### Consultar logs
+
 Para ver los logs de la aplicación:
 
 ```bash
 docker compose logs -f app
 ```
 
+### Ejecutar pruebas
+
 Para ejecutar las pruebas:
 
 ```bash
 docker compose exec app php artisan test
 ```
+
+### Detener el entorno
 
 Para detener el entorno:
 
@@ -172,6 +192,8 @@ docker compose down
 Esto elimina los contenedores y la red, pero conserva el volumen de PostgreSQL. `vendor/` permanece en el proyecto local y Git lo ignora. `docker compose down -v` también elimina el volumen y los datos de desarrollo.
 
 ## Producción
+
+### Configurar el entorno
 
 Crea `.env.production` a partir del ejemplo y configura sus valores antes de levantar los servicios:
 
@@ -187,12 +209,16 @@ docker run --rm php:8.5-cli php -r 'echo "base64:".base64_encode(random_bytes(32
 
 Copia el valor que imprime en `APP_KEY`. No subas `.env.production` al repositorio.
 
+### Ejecutar migraciones e iniciar los servicios
+
 Compose no carga `.env.production` automáticamente. Pasa el archivo explícitamente en cada comando. Ejecuta las migraciones antes de iniciar o actualizar la aplicación:
 
 ```bash
 docker compose --env-file .env.production -f docker-compose.prod.yml run --build --rm app php artisan migrate --path=db/migrations --force
 docker compose --env-file .env.production -f docker-compose.prod.yml up -d
 ```
+
+### Comprobar el despliegue
 
 Comprueba los servicios y la ruta de salud:
 
@@ -203,10 +229,30 @@ docker compose --env-file .env.production -f docker-compose.prod.yml ps
 curl -H "Authorization: Bearer tu-clave-configurada" http://localhost:8080/api/v1/health
 ```
 
-El puerto publicado de la aplicación es `APP_PORT` (por defecto `8080`). PostgreSQL y Redis solo están expuestos dentro de la red de Compose. Para detener producción sin borrar los datos:
+El puerto publicado de la aplicación es `APP_PORT` (por defecto `8080`). PostgreSQL y Redis solo están expuestos dentro de la red de Compose.
+
+### Detener los servicios
+
+Para detener producción sin borrar los datos:
 
 ```bash
 docker compose --env-file .env.production -f docker-compose.prod.yml down
 ```
 
 No agregues `-v` salvo que quieras eliminar también el volumen de PostgreSQL.
+
+## Uso de IA durante el desarrollo
+
+Utilicé ChatGPT y Codex como apoyo durante el desarrollo.
+
+Con ChatGPT discutí la arquitectura a partir de mis ideas, comparé alternativas y revisé sus ventajas y desventajas. Yo definí la estructura de la aplicación y elegí las opciones que consideré más adecuadas para el proyecto. También lo usé para resolver dudas y mejorar la documentación.
+
+Con Codex generé parte del código y las pruebas. Revisé cada modificación y adapté las propuestas cuando no coincidían con la arquitectura definida o agregaban complejidad innecesaria.
+
+Las decisiones técnicas y sus alternativas están explicadas en [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## Mejoras pendientes
+
+- **Procesamiento con colas y Horizon:** usaría Laravel Queues con Redis para ejecutar los análisis en segundo plano. Horizon permitiría administrar los workers y consultar tiempos de ejecución y fallos. Al aceptar un análisis nuevo, la API respondería `202 Accepted` con su ID. El cliente consultaría su estado y resultado mediante `GET /api/v1/analysis/{id}`.
+- **Integración continua:** agregaría un workflow de GitHub Actions que ejecute las pruebas automáticamente en cada pull request, usando PostgreSQL y Redis como servicios. Esto permitiría detectar fallos antes de integrar los cambios a `main`.
+- **Carga de varios logs:** ampliaría `POST /api/v1/logs` para recibir una lista con uno o varios logs. Validaría todos antes de guardarlos y usaría una transacción para evitar cargas incompletas. La respuesta incluiría los logs creados con sus IDs y habría un máximo configurable de logs por solicitud.
